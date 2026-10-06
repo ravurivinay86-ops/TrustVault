@@ -420,80 +420,100 @@ function App() {
   }, [pin]);
 
   /* ACCOUNT */
+const createAccount = async () => {
+  const name = registerName.trim();
+  const email = registerEmail.trim().toLowerCase();
+  const password = registerPassword;
+  const confirmPassword = registerConfirmPassword;
 
-  const createAccount = async () => {
-    if (
-      !registerEmail.trim() ||
-      !registerName.trim() ||
-      !registerPassword
-    ) {
-      showToast("⚠ Complete all account fields.");
+  if (!name || !email || !password || !confirmPassword) {
+    showToast("Please fill all fields");
+    return;
+  }
+
+  if (password.length < 6) {
+    showToast("Password must be at least 6 characters");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showToast("Passwords do not match");
+    return;
+  }
+
+  try {
+    showToast("Creating account...");
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+
+      options: {
+        data: {
+          full_name: name,
+        },
+
+        // After email verification, return to your TrustVault app
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      console.error("SIGNUP ERROR:", error);
+      showToast(error.message);
       return;
     }
 
-    if (registerPassword.length < 6) {
-      showToast("⚠ Password must contain at least 6 characters.");
+    if (!data.user) {
+      showToast("Account creation failed");
       return;
     }
 
-    if (registerPassword !== confirmPassword) {
-      showToast("⚠ Passwords do not match.");
-      return;
-    }
-
-    try {
-      const email = registerEmail.trim().toLowerCase();
-      const name = registerName.trim();
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: registerPassword,
-      });
-
-      if (error) {
-        console.error("Signup error:", error);
-        showToast(`⚠ ${error.message}`);
-        return;
-      }
-
-      if (!data.user) {
-        showToast("⚠ Account creation failed.");
-        return;
-      }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
+    // Save user's profile
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(
+        {
           id: data.user.id,
           full_name: name,
-        });
+        },
+        {
+          onConflict: "id",
+        }
+      );
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
-        showToast("Account created, but profile setup failed.");
-        return;
-      }
-
-      setRegisterEmail("");
-      setRegisterName("");
-      setRegisterPassword("");
-      setConfirmPassword("");
-
-      if (!data.session) {
-        showToast("✓ Account created. Check your email to confirm.");
-      } else {
-        showToast("✓ Account created successfully.");
-      }
-
-      setTimeout(() => {
-        setScreen("login");
-      }, 1000);
-    } catch (error) {
-      console.error(error);
-      showToast("⚠ Something went wrong.");
+    if (profileError) {
+      console.error("PROFILE ERROR:", profileError);
+      showToast(profileError.message);
+      return;
     }
-  };
 
+    // Clear registration fields
+    setRegisterName("");
+    setRegisterEmail("");
+    setRegisterPassword("");
+    setRegisterConfirmPassword("");
+
+    setRegisteredUser({
+      name: name,
+      email: email,
+    });
+
+    // Go to login
+    setScreen("login");
+
+    // Supabase sends verification email automatically
+    if (!data.session) {
+      showToast("Account created! Check your email to verify 📧");
+    } else {
+      showToast("Account created successfully 🎉");
+    }
+
+  } catch (error) {
+    console.error("UNEXPECTED ERROR:", error);
+    showToast("Something went wrong");
+  }
+};
   /* LOGIN */
 
   const login = async () => {
