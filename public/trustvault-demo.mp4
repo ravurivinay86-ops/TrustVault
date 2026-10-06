@@ -1,0 +1,13 @@
+<video
+  ref={"C:\Users\VINAY KARTHIK\OneDrive\Pictures\Documents\WhatsApp Video 2026-09-25 at 5.13.47 PM.mp4"}
+  className="demo-video"
+  src="/trustvault-demo.mp4"
+  autoPlay
+  muted
+  loop
+  playsInline
+  preload="auto"
+  onPlay={() => setVideoPlaying(true)}
+  onPause={() => setVideoPlaying(false)}
+  onError={() => setVideoError(true)}
+/>
